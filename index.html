@@ -57,7 +57,7 @@
     <button onclick="submitVote()">ส่งคะแนน</button>
   </div>
 
-  <h3>ผลโหวต (Real-Time)</h3>
+  <h3>ผลโหวต (รายคน)</h3>
   <table id="resultsTable">
     <thead>
       <tr>
@@ -68,7 +68,17 @@
       </tr>
     </thead>
     <tbody id="resultsBody"></tbody>
-    <tfoot id="resultsFooter"></tfoot>
+  </table>
+
+  <h3>คะแนนรวมแต่ละเครื่องดื่ม</h3>
+  <table id="summaryTable">
+    <thead>
+      <tr>
+        <th>เครื่องดื่ม</th>
+        <th>คะแนนรวม</th>
+      </tr>
+    </thead>
+    <tbody id="summaryBody"></tbody>
   </table>
 
   <canvas id="resultsChart" height="300"></canvas>
@@ -110,13 +120,12 @@
       [rank1, rank2, rank3].forEach(select => select.selectedIndex = 0);
 
       updateTable();
+      updateSummary();
       updateChart();
     }
 
     function updateTable() {
       resultsBody.innerHTML = "";
-      const countMap = {};
-      drinks.forEach(d => countMap[d] = 0);
 
       votes.forEach(vote => {
         const row = document.createElement("tr");
@@ -129,29 +138,32 @@
           const drink = vote.ranks[i] || "-";
           cell.textContent = drink;
           row.appendChild(cell);
-          if (drink !== "-") countMap[drink]++;
         });
 
         resultsBody.appendChild(row);
       });
+    }
 
-      // footer
-      resultsFooter.innerHTML = "";
-
-      const sumRow = document.createElement("tr");
-      const labelCell = document.createElement("td");
-      labelCell.colSpan = 4;
-      labelCell.style.textAlign = "right";
-      labelCell.textContent = "คะแนนรวมแต่ละเครื่องดื่ม:";
-      sumRow.appendChild(labelCell);
-
-      drinks.forEach(d => {
-        const td = document.createElement("td");
-        td.textContent = countMap[d];
-        sumRow.appendChild(td);
+    function updateSummary() {
+      const countMap = {};
+      drinks.forEach(d => countMap[d] = 0);
+      votes.forEach(vote => {
+        vote.ranks.forEach(drink => {
+          countMap[drink]++;
+        });
       });
 
-      resultsFooter.appendChild(sumRow);
+      summaryBody.innerHTML = "";
+      drinks.forEach(d => {
+        const row = document.createElement("tr");
+        const nameCell = document.createElement("td");
+        const scoreCell = document.createElement("td");
+        nameCell.textContent = d;
+        scoreCell.textContent = countMap[d];
+        row.appendChild(nameCell);
+        row.appendChild(scoreCell);
+        summaryBody.appendChild(row);
+      });
     }
 
     let chart;
