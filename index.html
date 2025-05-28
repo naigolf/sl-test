@@ -2,136 +2,148 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>Blind Test เครื่องดื่ม</title>
+  <title>Blind Test เครื่องดื่ม (Real-Time)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: sans-serif;
       padding: 20px;
-      max-width: 800px;
+      max-width: 900px;
       margin: auto;
     }
-    .hidden { display: none; }
-    button { margin-top: 10px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    td, th {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    .drink-select {
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
 
 <h1>Blind Test เครื่องดื่ม</h1>
 
-<div id="vote-section">
+<div>
   <label>ชื่อผู้ทดสอบ: <input type="text" id="testerName" /></label>
-  <h3>เลือกรายการที่ชอบที่สุด:</h3>
-  <div id="drinkOptions"></div>
+  <h3>เลือกเครื่องดื่มที่ชอบ เรียงลำดับจากมากไปน้อย:</h3>
+  <div id="rankedDrinks"></div>
   <button onclick="submitVote()">ส่งคะแนน</button>
 </div>
 
-<div id="result-section" class="hidden">
-  <h2>ผลการโหวต</h2>
-  <canvas id="barChart" height="100"></canvas>
-  <canvas id="pieChart" height="100"></canvas>
-</div>
+<hr>
+
+<h2>ผลโหวต (Real-Time)</h2>
+<table id="logTable">
+  <thead>
+    <tr>
+      <th>ชื่อผู้ทดสอบ</th>
+      <th>อันดับ 1</th>
+      <th>อันดับ 2</th>
+      <th>อันดับ 3</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<canvas id="barChart" height="100"></canvas>
 
 <script>
-  // === CONFIG ===
   const drinks = ["ยี่ห้อ A", "ยี่ห้อ B", "ยี่ห้อ C", "ยี่ห้อ D"];
-  const maxVoters = 5; // จำนวนผู้ทดสอบทั้งหมด
-
-  // === STATE ===
+  const maxRank = 3; // เลือกได้สูงสุดกี่อันดับ
+  const weight = [3, 2, 1]; // คะแนนถ่วงน้ำหนักสำหรับอันดับ 1–3
   let votes = {};
-  drinks.forEach(drink => votes[drink] = 0);
   let submittedNames = [];
 
-  // === RENDER OPTIONS ===
-  const drinkOptions = document.getElementById("drinkOptions");
-  drinks.forEach((drink, index) => {
-    const radio = document.createElement("input");
-    radio.type = "radio";
-    radio.name = "drink";
-    radio.id = `drink-${index}`;
-    radio.value = drink;
+  drinks.forEach(drink => votes[drink] = 0);
 
-    const label = document.createElement("label");
-    label.htmlFor = `drink-${index}`;
-    label.textContent = drink;
-
-    drinkOptions.appendChild(radio);
-    drinkOptions.appendChild(label);
-    drinkOptions.appendChild(document.createElement("br"));
-  });
-
-  // === SUBMIT VOTE ===
-  function submitVote() {
-    const name = document.getElementById("testerName").value.trim();
-    const selected = document.querySelector("input[name='drink']:checked");
-
-    if (!name || !selected) {
-      alert("กรุณาใส่ชื่อและเลือกตัวเลือก");
-      return;
-    }
-
-    if (submittedNames.includes(name)) {
-      alert("ชื่อผู้ทดสอบนี้ได้โหวตไปแล้ว");
-      return;
-    }
-
-    votes[selected.value]++;
-    submittedNames.push(name);
-    alert("บันทึกคะแนนเรียบร้อย");
-
-    document.getElementById("testerName").value = "";
-    selected.checked = false;
-
-    if (submittedNames.length >= maxVoters) {
-      showResult();
-    }
+  // Render Select Boxes
+  const rankedDiv = document.getElementById("rankedDrinks");
+  for (let i = 0; i < maxRank; i++) {
+    const select = document.createElement("select");
+    select.className = "drink-select";
+    select.innerHTML = `<option value="">-- อันดับ ${i+1} --</option>` +
+      drinks.map(d => `<option value="${d}">${d}</option>`).join("");
+    rankedDiv.appendChild(select);
+    rankedDiv.appendChild(document.createElement("br"));
   }
 
-  // === SHOW RESULT ===
-  function showResult() {
-    document.getElementById("vote-section").classList.add("hidden");
-    document.getElementById("result-section").classList.remove("hidden");
+  function submitVote() {
+    const name = document.getElementById("testerName").value.trim();
+    const selects = document.querySelectorAll(".drink-select");
+    let selections = [];
 
-    const labels = Object.keys(votes);
-    const data = Object.values(votes);
+    if (!name) {
+      alert("กรุณากรอกชื่อ");
+      return;
+    }
+    if (submittedNames.includes(name)) {
+      alert("โหวตไปแล้ว");
+      return;
+    }
 
-    // Bar Chart
-    new Chart(document.getElementById("barChart"), {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: 'จำนวนผู้เลือก',
-          data,
-          backgroundColor: 'rgba(54, 162, 235, 0.7)'
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: { beginAtZero: true }
-        }
+    // Get selected drinks
+    selects.forEach(s => {
+      if (s.value) selections.push(s.value);
+    });
+
+    // Check for duplicates
+    if (new Set(selections).size !== selections.length) {
+      alert("ห้ามเลือกซ้ำกันในแต่ละอันดับ");
+      return;
+    }
+
+    // Apply weighted scores
+    selections.forEach((drink, index) => {
+      votes[drink] += weight[index];
+    });
+
+    // Save name
+    submittedNames.push(name);
+
+    // Log
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${name}</td>` +
+      selections.map(d => `<td>${d}</td>`).join("") +
+      Array(maxRank - selections.length).fill("<td>-</td>").join("");
+    document.querySelector("#logTable tbody").appendChild(row);
+
+    // Reset
+    document.getElementById("testerName").value = "";
+    selects.forEach(s => s.value = "");
+
+    // Update chart
+    updateChart();
+  }
+
+  // Chart
+  let chart = new Chart(document.getElementById("barChart"), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(votes),
+      datasets: [{
+        label: 'คะแนนรวม',
+        data: Object.values(votes),
+        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true }
       }
-    });
+    }
+  });
 
-    // Pie Chart
-    new Chart(document.getElementById("pieChart"), {
-      type: 'pie',
-      data: {
-        labels,
-        datasets: [{
-          data,
-          backgroundColor: [
-            'rgba(255, 99, 132, 0.6)',
-            'rgba(255, 206, 86, 0.6)',
-            'rgba(75, 192, 192, 0.6)',
-            'rgba(153, 102, 255, 0.6)',
-            'rgba(255, 159, 64, 0.6)'
-          ]
-        }]
-      },
-      options: { responsive: true }
-    });
+  function updateChart() {
+    chart.data.datasets[0].data = Object.values(votes);
+    chart.update();
   }
 </script>
 
