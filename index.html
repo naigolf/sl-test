@@ -144,27 +144,31 @@
       });
     }
 
-    function updateSummary() {
-      const countMap = {};
-      drinks.forEach(d => countMap[d] = 0);
-      votes.forEach(vote => {
-        vote.ranks.forEach(drink => {
-          countMap[drink]++;
-        });
-      });
+function updateSummary() {
+  const countMap = {};
+  drinks.forEach(d => countMap[d] = 0);
+  votes.forEach(vote => {
+    vote.ranks.forEach(drink => {
+      countMap[drink]++;
+    });
+  });
 
-      summaryBody.innerHTML = "";
-      drinks.forEach(d => {
-        const row = document.createElement("tr");
-        const nameCell = document.createElement("td");
-        const scoreCell = document.createElement("td");
-        nameCell.textContent = d;
-        scoreCell.textContent = countMap[d];
-        row.appendChild(nameCell);
-        row.appendChild(scoreCell);
-        summaryBody.appendChild(row);
-      });
-    }
+  // แปลง object เป็น array แล้วเรียงลำดับจากคะแนนมากไปน้อย
+  const sortedSummary = Object.entries(countMap).sort((a, b) => b[1] - a[1]);
+
+  summaryBody.innerHTML = "";
+  sortedSummary.forEach(([drink, score]) => {
+    const row = document.createElement("tr");
+    const nameCell = document.createElement("td");
+    const scoreCell = document.createElement("td");
+    nameCell.textContent = drink;
+    scoreCell.textContent = score;
+    row.appendChild(nameCell);
+    row.appendChild(scoreCell);
+    summaryBody.appendChild(row);
+  });
+}
+
 
     let chart;
 
@@ -207,22 +211,31 @@
             legend: { display: false }
           }
         },
-        plugins: [{
-          id: 'valueOnTop',
-          afterDatasetsDraw(chart) {
-            const { ctx, data } = chart;
-            ctx.save();
-            chart.getDatasetMeta(0).data.forEach((bar, i) => {
-              const val = data.datasets[0].data[i];
-              if (val > 0) {
-                ctx.fillStyle = "#000";
-                ctx.font = "14px sans-serif";
-                ctx.textAlign = "center";
-                ctx.fillText(val, bar.x, bar.y - 6);
-              }
-            });
-          }
-        }]
+plugins: [{
+  id: 'valueOnTop',
+  afterDatasetsDraw(chart) {
+    const { ctx, data, chartArea: { top }, scales: { y } } = chart;
+    ctx.save();
+    chart.getDatasetMeta(0).data.forEach((bar, i) => {
+      const val = data.datasets[0].data[i];
+      if (val > 0) {
+        const x = bar.x;
+        const yPos = bar.y;
+
+        ctx.fillStyle = "#000";
+        ctx.font = "14px sans-serif";
+        ctx.textAlign = "center";
+
+        const valueY = yPos - 6;
+
+        // ป้องกันไม่ให้ตัวเลขเลยขอบบนของกราฟ
+        const minY = top + 14; // ระยะห่างขั้นต่ำจากบนสุดของกราฟ
+        ctx.fillText(val, x, valueY < minY ? minY : valueY);
+      }
+    });
+  }
+}]
+
       });
     }
   </script>
