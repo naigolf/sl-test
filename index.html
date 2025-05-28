@@ -64,6 +64,57 @@
 
   <h3>ผลโหวต (รายคน)</h3>
   <table id="resultsTable">
+
+
+
+
+
+
+
+    
+
+    <h3>สรุปอันดับ 1</h3>
+<table id="rank1Summary">
+  <thead>
+    <tr>
+      <th>ชื่อเครื่องดื่ม</th>
+      <th>จำนวนคนโหวต</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<h3>สรุปอันดับ 2</h3>
+<table id="rank2Summary">
+  <thead>
+    <tr>
+      <th>ชื่อเครื่องดื่ม</th>
+      <th>จำนวนคนโหวต</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<h3>สรุปอันดับ 3</h3>
+<table id="rank3Summary">
+  <thead>
+    <tr>
+      <th>ชื่อเครื่องดื่ม</th>
+      <th>จำนวนคนโหวต</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+
+    
+
+
+
+
+
+    
+    
     <thead>
       <tr>
         <th>ชื่อผู้ทดสอบ</th>
@@ -175,6 +226,52 @@ function updateSummary() {
 }
 
 
+
+
+
+
+
+
+
+function updateRankSummary() {
+  const rankCounts = [{}, {}, {}];
+
+  votes.forEach(vote => {
+    vote.ranks.forEach((drink, i) => {
+      if (!rankCounts[i][drink]) rankCounts[i][drink] = 0;
+      rankCounts[i][drink]++;
+    });
+  });
+
+  rankCounts.forEach((countMap, i) => {
+    const tbody = document.querySelector(`#rank${i + 1}Summary tbody`);
+    tbody.innerHTML = "";
+
+    const sorted = Object.entries(countMap)
+      .sort((a, b) => b[1] - a[1]);
+
+    sorted.forEach(([drink, count]) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${drink}</td><td>${count}</td>`;
+      tbody.appendChild(row);
+    });
+  });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     let chart;
 
     function updateChart() {
@@ -297,6 +394,7 @@ function saveDrinkConfig() {
   updateSummary();
   updateChart();
   closeDrinkConfig();
+  updateRankSummary();
 }
 
 
