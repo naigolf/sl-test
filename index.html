@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Blind Test เครื่องดื่ม</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+    .hidden { display: none; }
+    button { margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<h1>Blind Test เครื่องดื่ม</h1>
+
+<div id="vote-section">
+  <label>ชื่อผู้ทดสอบ: <input type="text" id="testerName" /></label>
+  <h3>เลือกรายการที่ชอบที่สุด:</h3>
+  <div id="drinkOptions"></div>
+  <button onclick="submitVote()">ส่งคะแนน</button>
+</div>
+
+<div id="result-section" class="hidden">
+  <h2>ผลการโหวต</h2>
+  <canvas id="barChart" height="100"></canvas>
+  <canvas id="pieChart" height="100"></canvas>
+</div>
+
+<script>
+  // === CONFIG ===
+  const drinks = ["ยี่ห้อ A", "ยี่ห้อ B", "ยี่ห้อ C", "ยี่ห้อ D"];
+  const maxVoters = 5; // จำนวนผู้ทดสอบทั้งหมด
+
+  // === STATE ===
+  let votes = {};
+  drinks.forEach(drink => votes[drink] = 0);
+  let submittedNames = [];
+
+  // === RENDER OPTIONS ===
+  const drinkOptions = document.getElementById("drinkOptions");
+  drinks.forEach((drink, index) => {
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "drink";
+    radio.id = `drink-${index}`;
+    radio.value = drink;
+
+    const label = document.createElement("label");
+    label.htmlFor = `drink-${index}`;
+    label.textContent = drink;
+
+    drinkOptions.appendChild(radio);
+    drinkOptions.appendChild(label);
+    drinkOptions.appendChild(document.createElement("br"));
+  });
+
+  // === SUBMIT VOTE ===
+  function submitVote() {
+    const name = document.getElementById("testerName").value.trim();
+    const selected = document.querySelector("input[name='drink']:checked");
+
+    if (!name || !selected) {
+      alert("กรุณาใส่ชื่อและเลือกตัวเลือก");
+      return;
+    }
+
+    if (submittedNames.includes(name)) {
+      alert("ชื่อผู้ทดสอบนี้ได้โหวตไปแล้ว");
+      return;
+    }
+
+    votes[selected.value]++;
+    submittedNames.push(name);
+    alert("บันทึกคะแนนเรียบร้อย");
+
+    document.getElementById("testerName").value = "";
+    selected.checked = false;
+
+    if (submittedNames.length >= maxVoters) {
+      showResult();
+    }
+  }
+
+  // === SHOW RESULT ===
+  function showResult() {
+    document.getElementById("vote-section").classList.add("hidden");
+    document.getElementById("result-section").classList.remove("hidden");
+
+    const labels = Object.keys(votes);
+    const data = Object.values(votes);
+
+    // Bar Chart
+    new Chart(document.getElementById("barChart"), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'จำนวนผู้เลือก',
+          data,
+          backgroundColor: 'rgba(54, 162, 235, 0.7)'
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Pie Chart
+    new Chart(document.getElementById("pieChart"), {
+      type: 'pie',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.6)',
+            'rgba(255, 206, 86, 0.6)',
+            'rgba(75, 192, 192, 0.6)',
+            'rgba(153, 102, 255, 0.6)',
+            'rgba(255, 159, 64, 0.6)'
+          ]
+        }]
+      },
+      options: { responsive: true }
+    });
+  }
+</script>
+
+</body>
+</html>
