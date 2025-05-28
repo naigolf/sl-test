@@ -2,150 +2,217 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>Blind Test เครื่องดื่ม ...(Real-Time)</title>
+  <title>Blind Test เครื่องดื่ม</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: sans-serif;
-      padding: 20px;
-      max-width: 900px;
-      margin: auto;
+      margin: 20px;
+      max-width: 100%;
     }
     table {
-      width: 100%;
       border-collapse: collapse;
+      width: 100%;
       margin-top: 20px;
+      overflow-x: auto;
     }
-    td, th {
+    table, th, td {
       border: 1px solid #ccc;
-      padding: 8px;
       text-align: center;
+      padding: 8px;
     }
-    .drink-select {
-      margin-bottom: 5px;
+    th {
+      background-color: #f0f0f0;
+    }
+    input, select, button {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+      max-width: 300px;
+    }
+    canvas {
+      margin-top: 30px;
+      max-width: 100%;
+    }
+    @media (min-width: 600px) {
+      input, select, button {
+        width: auto;
+      }
     }
   </style>
 </head>
 <body>
+  <h2>Blind Test เครื่องดื่ม</h2>
 
-<h1>Blind Test เครื่องดื่ม</h1>
+  <div>
+    <label>ชื่อผู้ทดสอบ:</label><br>
+    <input type="text" id="testerName" placeholder="เช่น a"><br>
+    
+    <label>เลือกเครื่องดื่ม (เรียงลำดับความชอบ):</label><br>
+    <select id="rank1"><option value="">อันดับ 1</option></select>
+    <select id="rank2"><option value="">อันดับ 2</option></select>
+    <select id="rank3"><option value="">อันดับ 3</option></select><br>
 
-<div>
-  <label>ชื่อผู้ทดสอบ: <input type="text" id="testerName" /></label>
-  <h3>เลือกเครื่องดื่มที่ชอบ เรียงลำดับจากมากไปน้อย:</h3>
-  <div id="rankedDrinks"></div>
-  <button onclick="submitVote()">ส่งคะแนน</button>
-</div>
+    <button onclick="submitVote()">ส่งคะแนน</button>
+  </div>
 
-<hr>
+  <h3>ผลโหวต (Real-Time)</h3>
+  <table id="resultsTable">
+    <thead>
+      <tr>
+        <th>ชื่อผู้ทดสอบ</th>
+        <th>อันดับ 1</th>
+        <th>อันดับ 2</th>
+        <th>อันดับ 3</th>
+      </tr>
+    </thead>
+    <tbody id="resultsBody"></tbody>
+    <tfoot id="resultsFooter"></tfoot>
+  </table>
 
-<h2>ผลโหวต (Real-Time)</h2>
-<table id="logTable">
-  <thead>
-    <tr>
-      <th>ชื่อผู้ทดสอบ</th>
-      <th>อันดับ 1</th>
-      <th>อันดับ 2</th>
-      <th>อันดับ 3</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+  <canvas id="resultsChart" height="300"></canvas>
 
-<canvas id="barChart" height="100"></canvas>
+  <script>
+    const drinks = ["A", "B", "C", "D", "E", "F", "G", "H"];
+    const votes = [];
 
-<script>
-  const drinks = ["แก้ว1", "แก้ว2", "แก้ว3", "แก้ว4", "แก้ว5", "แก้ว6", "แก้ว7", "แก้ว8"];
-  const maxRank = 8; // เลือกได้สูงสุดกี่อันดับ
-  const weight = [8,7,6,5,4, 3, 2, 1]; // คะแนนถ่วงน้ำหนักสำหรับอันดับ 1–3
-  let votes = {};
-  let submittedNames = [];
-
-  drinks.forEach(drink => votes[drink] = 0);
-
-  // Render Select Boxes
-  const rankedDiv = document.getElementById("rankedDrinks");
-  for (let i = 0; i < maxRank; i++) {
-    const select = document.createElement("select");
-    select.className = "drink-select";
-    select.innerHTML = `<option value="">-- อันดับ ${i+1} --</option>` +
-      drinks.map(d => `<option value="${d}">${d}</option>`).join("");
-    rankedDiv.appendChild(select);
-    rankedDiv.appendChild(document.createElement("br"));
-  }
-
-  function submitVote() {
-    const name = document.getElementById("testerName").value.trim();
-    const selects = document.querySelectorAll(".drink-select");
-    let selections = [];
-
-    if (!name) {
-      alert("กรุณากรอกชื่อ");
-      return;
-    }
-    if (submittedNames.includes(name)) {
-      alert("โหวตไปแล้ว");
-      return;
-    }
-
-    // Get selected drinks
-    selects.forEach(s => {
-      if (s.value) selections.push(s.value);
+    // เติม dropdown
+    [rank1, rank2, rank3].forEach(select => {
+      drinks.forEach(d => {
+        const option = document.createElement("option");
+        option.value = d;
+        option.textContent = d;
+        select.appendChild(option);
+      });
     });
 
-    // Check for duplicates
-    if (new Set(selections).size !== selections.length) {
-      alert("ห้ามเลือกซ้ำกันในแต่ละอันดับ");
-      return;
-    }
+    function submitVote() {
+      const name = testerName.value.trim();
+      const r1 = rank1.value, r2 = rank2.value, r3 = rank3.value;
 
-    // Apply weighted scores
-    selections.forEach((drink, index) => {
-      votes[drink] += weight[index];
-    });
-
-    // Save name
-    submittedNames.push(name);
-
-    // Log
-    const row = document.createElement("tr");
-    row.innerHTML = `<td>${name}</td>` +
-      selections.map(d => `<td>${d}</td>`).join("") +
-      Array(maxRank - selections.length).fill("<td>-</td>").join("");
-    document.querySelector("#logTable tbody").appendChild(row);
-
-    // Reset
-    document.getElementById("testerName").value = "";
-    selects.forEach(s => s.value = "");
-
-    // Update chart
-    updateChart();
-  }
-
-  // Chart
-  let chart = new Chart(document.getElementById("barChart"), {
-    type: 'bar',
-    data: {
-      labels: Object.keys(votes),
-      datasets: [{
-        label: 'คะแนนรวม',
-        data: Object.values(votes),
-        backgroundColor: 'rgba(75, 192, 192, 0.6)'
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { beginAtZero: true }
+      if (!name || !r1) {
+        alert("กรุณากรอกชื่อและเลือกอย่างน้อยอันดับ 1");
+        return;
       }
+
+      const ranks = [r1, r2, r3].filter(Boolean);
+
+      if (new Set(ranks).size !== ranks.length) {
+        alert("เลือกรายการซ้ำกัน กรุณาเลือกไม่ซ้ำกัน");
+        return;
+      }
+
+      votes.push({ name, ranks });
+
+      // reset form
+      testerName.value = "";
+      [rank1, rank2, rank3].forEach(select => select.selectedIndex = 0);
+
+      updateTable();
+      updateChart();
     }
-  });
 
-  function updateChart() {
-    chart.data.datasets[0].data = Object.values(votes);
-    chart.update();
-  }
-</script>
+    function updateTable() {
+      resultsBody.innerHTML = "";
+      const countMap = {};
+      drinks.forEach(d => countMap[d] = 0);
 
+      votes.forEach(vote => {
+        const row = document.createElement("tr");
+        const nameCell = document.createElement("td");
+        nameCell.textContent = vote.name;
+        row.appendChild(nameCell);
+
+        [0, 1, 2].forEach(i => {
+          const cell = document.createElement("td");
+          const drink = vote.ranks[i] || "-";
+          cell.textContent = drink;
+          row.appendChild(cell);
+          if (drink !== "-") countMap[drink]++;
+        });
+
+        resultsBody.appendChild(row);
+      });
+
+      // footer
+      resultsFooter.innerHTML = "";
+
+      const sumRow = document.createElement("tr");
+      const labelCell = document.createElement("td");
+      labelCell.colSpan = 4;
+      labelCell.style.textAlign = "right";
+      labelCell.textContent = "คะแนนรวมแต่ละเครื่องดื่ม:";
+      sumRow.appendChild(labelCell);
+
+      drinks.forEach(d => {
+        const td = document.createElement("td");
+        td.textContent = countMap[d];
+        sumRow.appendChild(td);
+      });
+
+      resultsFooter.appendChild(sumRow);
+    }
+
+    let chart;
+
+    function updateChart() {
+      const countMap = {};
+      drinks.forEach(d => countMap[d] = 0);
+
+      votes.forEach(vote => {
+        vote.ranks.forEach(drink => {
+          countMap[drink]++;
+        });
+      });
+
+      const labels = drinks;
+      const data = labels.map(d => countMap[d]);
+
+      if (chart) chart.destroy();
+      const ctx = document.getElementById("resultsChart").getContext("2d");
+
+      chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "คะแนนรวม",
+            data,
+            backgroundColor: "rgba(0, 150, 200, 0.6)"
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              precision: 0
+            }
+          },
+          plugins: {
+            tooltip: { enabled: true },
+            legend: { display: false }
+          }
+        },
+        plugins: [{
+          id: 'valueOnTop',
+          afterDatasetsDraw(chart) {
+            const { ctx, data } = chart;
+            ctx.save();
+            chart.getDatasetMeta(0).data.forEach((bar, i) => {
+              const val = data.datasets[0].data[i];
+              if (val > 0) {
+                ctx.fillStyle = "#000";
+                ctx.font = "14px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(val, bar.x, bar.y - 6);
+              }
+            });
+          }
+        }]
+      });
+    }
+  </script>
 </body>
 </html>
