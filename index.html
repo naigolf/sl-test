@@ -53,11 +53,18 @@
 <body>
   <h1>Blind Test เครื่องดื่ม <span>Cr. NaiGolf</span></h1>
 
-  <div class="button-container">
-    <button onclick="resetStoredData()" style="background-color: #ffcccc;">🔄 รีเซ็ตข้อมูลทั้งหมด</button>
-    <button onclick="openDrinkConfig()">⚙️ ตั้งค่าเครื่องดื่ม</button>
-  </div>
+<div class="button-container">
+  <button onclick="sendToGoogleSheet()" style="background-color: #ccffcc; margin-right: 5px;">💾 Save to Sheet....</button> 
+  <button onclick="resetStoredData()" style="background-color: #ffcccc;">🔄 รีเซ็ตข้อมูลทั้งหมด</button>
+  <button onclick="openDrinkConfig()">⚙️ ตั้งค่าเครื่องดื่ม</button>
+</div>
+  
+  
+  
   <div>
+  <label>ชื่อการทดสอบ:</label><br>
+  	<input id="testNameInput" placeholder="กรอกชื่อการทดสอบ..." /><br>
+  
     <label>ชื่อผู้ทดสอบ:</label><br>
     <input type="text" id="testerName" placeholder="เช่น a"><br>
     
@@ -406,6 +413,73 @@
       }
     }
     // --- END: เพิ่มฟังก์ชัน resetStoredData ---
+    
+    
+    
+    
+    
+    
+
+    
+ 
+ 
+ 
+ 
+ 
+ function sendToGoogleSheet() {
+  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyGnKTWgfbRhDKMJyZ-lB9w4s8_osZ3i8gdeoFN9kt49CLIU_2cPPO7azHCuzYDyGxujg/exec';
+
+  const testName = document.getElementById("testNameInput").value.trim();
+
+
+alert(JSON.stringify(votes));
+
+  if (!testName) {
+    alert("กรุณากรอกชื่อการทดสอบก่อนส่งข้อมูลไปยัง Google Sheet");
+    return;
+  }
+
+  if (votes.length === 0) {
+    alert("ยังไม่มีข้อมูลการโหวตให้ส่ง");
+    return;
+  }
+
+  const payload = {
+    testName: testName,
+    votes: votes
+  };
+
+  // ตรวจสอบก่อนส่ง
+  console.log("Payload to send:", payload);
+  
+
+  fetch(GOOGLE_SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: {
+      "Content-Type": "application/json"
+    }
+  })
+  .then(res => res.text())
+  .then(response => {
+    alert("✅ ส่งข้อมูลสำเร็จ: " + response);
+  })
+  .catch(err => {
+    console.error("❌ Error sending to Google Sheet:", err);
+    alert("❌ เกิดข้อผิดพลาดในการส่งข้อมูล");
+  });
+}
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     // --- START: สร้างฟังก์ชัน updateAllDisplays เพื่อลดโค้ดซ้ำซ้อน ---
     function updateAllDisplays() {
