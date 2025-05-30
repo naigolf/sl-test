@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    h1 span {
+      font-size: 0.5em;
+      color: gray;
+    }
     body {
       font-family: sans-serif;
       margin: 20px;
@@ -27,13 +31,17 @@
     }
     input, select, button {
       padding: 8px;
-      margin: 5px 0;
+      margin: 5px 2px; /* ปรับ margin เล็กน้อย */
       width: 100%;
       max-width: 300px;
     }
     canvas {
       margin-top: 30px;
       max-width: 100%;
+    }
+    .button-container { /* เพิ่ม class สำหรับจัดกลุ่มปุ่ม */
+      text-align: right;
+      margin-bottom: 10px;
     }
     @media (min-width: 600px) {
       input, select, button {
@@ -43,13 +51,12 @@
   </style>
 </head>
 <body>
-  <h2>Blind Test เครื่องดื่ม</h2>
+  <h1>Blind Test เครื่องดื่ม <span>Cr. NaiGolf</span></h1>
 
-  <div style="text-align: right;">
-  <button onclick="openDrinkConfig()">⚙️ ตั้งค่าเครื่องดื่ม</button>
-</div>
-
-
+  <div class="button-container">
+    <button onclick="resetStoredData()" style="background-color: #ffcccc;">🔄 รีเซ็ตข้อมูลทั้งหมด</button>
+    <button onclick="openDrinkConfig()">⚙️ ตั้งค่าเครื่องดื่ม</button>
+  </div>
   <div>
     <label>ชื่อผู้ทดสอบ:</label><br>
     <input type="text" id="testerName" placeholder="เช่น a"><br>
@@ -75,6 +82,39 @@
     <tbody id="resultsBody"></tbody>
   </table>
 
+  <h3>สรุปอันดับ 1</h3>
+  <table id="rank1Summary">
+    <thead>
+      <tr>
+        <th>ชื่อเครื่องดื่ม</th>
+        <th>จำนวนคนโหวต</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>สรุปอันดับ 2</h3>
+  <table id="rank2Summary">
+    <thead>
+      <tr>
+        <th>ชื่อเครื่องดื่ม</th>
+        <th>จำนวนคนโหวต</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>สรุปอันดับ 3</h3>
+  <table id="rank3Summary">
+    <thead>
+      <tr>
+        <th>ชื่อเครื่องดื่ม</th>
+        <th>จำนวนคนโหวต</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
   <h3>คะแนนรวมแต่ละเครื่องดื่ม</h3>
   <table id="summaryTable">
     <thead>
@@ -85,22 +125,71 @@
     </thead>
     <tbody id="summaryBody"></tbody>
   </table>
+  
+  <div id="chartContainer" style="height: 200px; width: 100%; margin-top: 30px; position: relative;">
+  <canvas id="resultsChart"></canvas>
+</div>
 
-  <canvas id="resultsChart" height="300"></canvas>
+
+<canvas id="resultsChart" height="150"></canvas>
+
+
+
+
 
   <script>
-    const drinks = ["แก้ว1", "แก้ว2", "แก้ว3", "แก้ว4", "แก้ว5", "แก้ว6", "แก้ว7", "แก้ว8"];
-    const votes = [];
+    // --- START: เพิ่ม defaultDrinks constant ---
+    const defaultDrinksList = ["แก้ว1", "แก้ว2", "แก้ว3", "แก้ว4", "แก้ว5", "แก้ว6", "แก้ว7", "แก้ว8"];
+    let drinks = [...defaultDrinksList]; // กำหนดค่าเริ่มต้นให้ drinks
+    let votes = [];
+    // --- END: เพิ่ม defaultDrinks constant ---
 
-    // เติม dropdown
-    [rank1, rank2, rank3].forEach(select => {
-      drinks.forEach(d => {
-        const option = document.createElement("option");
-        option.value = d;
-        option.textContent = d;
-        select.appendChild(option);
+    // โหลด drinks จาก localStorage (ถ้ามี)
+    const storedDrinks = localStorage.getItem('blindTestDrinks');
+    if (storedDrinks) {
+      try {
+        const parsedDrinks = JSON.parse(storedDrinks);
+        if (Array.isArray(parsedDrinks) && parsedDrinks.length > 0) { // ตรวจสอบว่าเป็น array และไม่ว่าง
+            drinks = parsedDrinks;
+        } else {
+            localStorage.removeItem('blindTestDrinks'); // ลบถ้าข้อมูลไม่ถูกต้อง
+        }
+      } catch (e) {
+        console.error("Error parsing stored drinks:", e);
+        localStorage.removeItem('blindTestDrinks');
+      }
+    }
+
+    // โหลด votes จาก localStorage (ถ้ามี)
+    const storedVotes = localStorage.getItem('blindTestVotes');
+    if (storedVotes) {
+      try {
+        const parsedVotes = JSON.parse(storedVotes);
+        if (Array.isArray(parsedVotes)) { // ตรวจสอบว่าเป็น array
+            votes = parsedVotes;
+        } else {
+            localStorage.removeItem('blindTestVotes'); // ลบถ้าข้อมูลไม่ถูกต้อง
+        }
+      } catch (e) {
+        console.error("Error parsing stored votes:", e);
+        localStorage.removeItem('blindTestVotes');
+      }
+    }
+
+    function populateDrinkDropdowns() {
+      [rank1, rank2, rank3].forEach(select => {
+        const firstOptionText = `อันดับ ${select.id === 'rank1' ? 1 : select.id === 'rank2' ? 2 : 3}`;
+        select.innerHTML = `<option value="">${firstOptionText}</option>`; // เริ่มต้นด้วย option default
+
+        drinks.forEach(d => {
+          const option = document.createElement("option");
+          option.value = d;
+          option.textContent = d;
+          select.appendChild(option);
+        });
       });
-    });
+    }
+    populateDrinkDropdowns();
 
     function submitVote() {
       const name = testerName.value.trim();
@@ -119,76 +208,88 @@
       }
 
       votes.push({ name, ranks });
+      localStorage.setItem('blindTestVotes', JSON.stringify(votes));
 
-      // reset form
       testerName.value = "";
       [rank1, rank2, rank3].forEach(select => select.selectedIndex = 0);
 
-      updateTable();
-      updateSummary();
-      updateChart();
+      updateAllDisplays();
     }
 
     function updateTable() {
       resultsBody.innerHTML = "";
-
       votes.forEach(vote => {
         const row = document.createElement("tr");
-        const nameCell = document.createElement("td");
-        nameCell.textContent = vote.name;
-        row.appendChild(nameCell);
-
-        [0, 1, 2].forEach(i => {
-          const cell = document.createElement("td");
-          const drink = vote.ranks[i] || "-";
-          cell.textContent = drink;
-          row.appendChild(cell);
-        });
-
+        row.insertCell().textContent = vote.name;
+        row.insertCell().textContent = vote.ranks[0] || "-";
+        row.insertCell().textContent = vote.ranks[1] || "-";
+        row.insertCell().textContent = vote.ranks[2] || "-";
         resultsBody.appendChild(row);
       });
     }
 
-function updateSummary() {
-  const countMap = {};
-  drinks.forEach(d => countMap[d] = 0);
-  votes.forEach(vote => {
-    vote.ranks.forEach(drink => {
-      countMap[drink]++;
-    });
-  });
-
-  // แปลง object เป็น array แล้วเรียงลำดับจากคะแนนมากไปน้อย
-  const sortedSummary = Object.entries(countMap).sort((a, b) => b[1] - a[1]);
-
-  summaryBody.innerHTML = "";
-  sortedSummary.forEach(([drink, score]) => {
-    const row = document.createElement("tr");
-    const nameCell = document.createElement("td");
-    const scoreCell = document.createElement("td");
-    nameCell.textContent = drink;
-    scoreCell.textContent = score;
-    row.appendChild(nameCell);
-    row.appendChild(scoreCell);
-    summaryBody.appendChild(row);
-  });
-}
-
-
-    let chart;
-
-    function updateChart() {
+    function updateSummary() {
       const countMap = {};
       drinks.forEach(d => countMap[d] = 0);
-
       votes.forEach(vote => {
         vote.ranks.forEach(drink => {
-          countMap[drink]++;
+          if (countMap.hasOwnProperty(drink)) {
+             countMap[drink]++;
+          }
         });
       });
 
-      const labels = drinks;
-      const data = labels.map(d => countMap[d]);
+      const sortedSummary = Object.entries(countMap).sort((a, b) => b[1] - a[1]);
+      summaryBody.innerHTML = "";
+      sortedSummary.forEach(([drink, score]) => {
+        const row = summaryBody.insertRow();
+        row.insertCell().textContent = drink;
+        row.insertCell().textContent = score;
+      });
+    }
+
+    function updateRankSummary() {
+      const rankCounts = [{}, {}, {}];
+      drinks.forEach(drink => {
+        rankCounts[0][drink] = 0;
+        rankCounts[1][drink] = 0;
+        rankCounts[2][drink] = 0;
+      });
+
+      votes.forEach(vote => {
+        vote.ranks.forEach((drink, i) => {
+          if (rankCounts[i] && rankCounts[i].hasOwnProperty(drink)) {
+             rankCounts[i][drink]++;
+          }
+        });
+      });
+
+      rankCounts.forEach((countMap, i) => {
+        const tbody = document.querySelector(`#rank${i + 1}Summary tbody`);
+        tbody.innerHTML = "";
+        const sorted = Object.entries(countMap).sort((a, b) => b[1] - a[1]);
+        sorted.forEach(([drink, count]) => {
+          const row = tbody.insertRow();
+          row.insertCell().textContent = drink;
+          row.insertCell().textContent = count;
+        });
+      });
+    }
+    
+    let chart;
+    function updateChart() {
+      const countMap = {};
+      drinks.forEach(d => countMap[d] = 0);
+      votes.forEach(vote => {
+        vote.ranks.forEach(drink => {
+          if (countMap.hasOwnProperty(drink)) {
+            countMap[drink]++;
+          }
+        });
+      });
+
+      const labels = [...drinks]; // สร้าง copy ของ drinks array เพื่อความปลอดภัย
+      const data = labels.map(d => countMap[d] || 0);
 
       if (chart) chart.destroy();
       const ctx = document.getElementById("resultsChart").getContext("2d");
@@ -205,10 +306,11 @@ function updateSummary() {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false, // เพิ่มเพื่อให้ปรับขนาดได้ดีขึ้น
           scales: {
             y: {
               beginAtZero: true,
-              precision: 0
+              ticks: { precision: 0 }
             }
           },
           plugins: {
@@ -216,104 +318,116 @@ function updateSummary() {
             legend: { display: false }
           }
         },
-plugins: [{
-  id: 'valueOnTop',
-  afterDatasetsDraw(chart) {
-    const { ctx, data, chartArea: { top }, scales: { y } } = chart;
-    ctx.save();
-    chart.getDatasetMeta(0).data.forEach((bar, i) => {
-      const val = data.datasets[0].data[i];
-      if (val > 0) {
-        const x = bar.x;
-        const yPos = bar.y;
-
-        ctx.fillStyle = "#000";
-        ctx.font = "14px sans-serif";
-        ctx.textAlign = "center";
-
-        const valueY = yPos - 6;
-
-        // ป้องกันไม่ให้ตัวเลขเลยขอบบนของกราฟ
-        const minY = top + 14; // ระยะห่างขั้นต่ำจากบนสุดของกราฟ
-        ctx.fillText(val, x, valueY < minY ? minY : valueY);
-      }
-    });
-  }
-}]
-
+        plugins: [{
+          id: 'valueOnTop',
+          afterDatasetsDraw(chartInstance) {
+            const { ctx, data: chartData, chartArea: { top }, scales: { y } } = chartInstance; // เปลี่ยนชื่อ data เป็น chartData
+            ctx.save();
+            chartInstance.getDatasetMeta(0).data.forEach((bar, i) => {
+              const val = chartData.datasets[0].data[i];
+              if (val > 0) {
+                const x = bar.x;
+                const yPos = bar.y;
+                ctx.fillStyle = "#000";
+                ctx.font = "14px sans-serif";
+                ctx.textAlign = "center";
+                const valueY = yPos - 6;
+                const minY = top + 14;
+                ctx.fillText(val, x, valueY < minY ? minY : valueY);
+              }
+            });
+            ctx.restore();
+          }
+        }]
       });
     }
 
+    function openDrinkConfig() {
+      const modal = document.getElementById("configModal");
+      const overlay = document.getElementById("modalOverlay");
+      const container = document.getElementById("drinkInputs");
 
+      container.innerHTML = "";
+      drinks.forEach((drink, i) => {
+        const label = document.createElement("label");
+        label.textContent = `ชื่อเครื่องดื่ม ${i + 1}:`;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = drink;
+        input.dataset.index = i;
+        input.placeholder = `เช่น ${defaultDrinksList[i] || 'เครื่องดื่ม'}`; // ใช้ default list สำหรับ placeholder
 
-function openDrinkConfig() {
-  const modal = document.getElementById("configModal");
-  const overlay = document.getElementById("modalOverlay");
-  const container = document.getElementById("drinkInputs");
+        container.appendChild(label);
+        container.appendChild(document.createElement("br"));
+        container.appendChild(input);
+        container.appendChild(document.createElement("br"));
+      });
 
-  container.innerHTML = "";
-  drinks.forEach((drink, i) => {
-    const label = document.createElement("label");
-    label.textContent = `แก้ว ${i + 1}:`;
-    const input = document.createElement("input");
-    input.type = "text";
-    input.value = drink;
-    input.dataset.index = i;
+      modal.style.display = "block";
+      overlay.style.display = "block";
+    }
 
-    container.appendChild(label);
-    container.appendChild(document.createElement("br"));
-    container.appendChild(input);
-    container.appendChild(document.createElement("br"));
-  });
+    function closeDrinkConfig() {
+      document.getElementById("configModal").style.display = "none";
+      document.getElementById("modalOverlay").style.display = "none";
+    }
 
-  modal.style.display = "block";
-  overlay.style.display = "block";
-}
+    function saveDrinkConfig() {
+      const inputs = document.querySelectorAll("#drinkInputs input");
+      const newDrinks = [];
+      inputs.forEach(input => {
+        const index = parseInt(input.dataset.index);
+        // ถ้าผู้ใช้ไม่ใส่ชื่อ ให้ใช้ชื่อ default หรือชื่อเดิมถ้ามี
+        const defaultName = defaultDrinksList[index] || `แก้ว${index + 1}`;
+        newDrinks[index] = input.value.trim() || drinks[index] || defaultName;
+      });
+      drinks = newDrinks;
 
-function closeDrinkConfig() {
-  document.getElementById("configModal").style.display = "none";
-  document.getElementById("modalOverlay").style.display = "none";
-}
+      localStorage.setItem('blindTestDrinks', JSON.stringify(drinks));
+      populateDrinkDropdowns();
+      updateAllDisplays(); // อัปเดตทุกส่วนที่แสดงผล
+      closeDrinkConfig();
+    }
 
-function saveDrinkConfig() {
-  const inputs = document.querySelectorAll("#drinkInputs input");
-  inputs.forEach(input => {
-    const index = parseInt(input.dataset.index);
-    drinks[index] = input.value.trim() || `แก้ว${index + 1}`;
-  });
+    // --- START: เพิ่มฟังก์ชัน resetStoredData ---
+    function resetStoredData() {
+      if (confirm("คุณต้องการรีเซ็ตข้อมูลการโหวตและชื่อเครื่องดื่มทั้งหมดที่บันทึกไว้ใช่หรือไม่?")) {
+        localStorage.removeItem('blindTestVotes');
+        localStorage.removeItem('blindTestDrinks');
 
-  // รีเฟรช dropdown
-  [rank1, rank2, rank3].forEach(select => {
-    select.innerHTML = `<option value="">อันดับ ${select.id === 'rank1' ? 1 : select.id === 'rank2' ? 2 : 3}</option>`;
-    drinks.forEach(d => {
-      const option = document.createElement("option");
-      option.value = d;
-      option.textContent = d;
-      select.appendChild(option);
-    });
-  });
+        votes = [];
+        drinks = [...defaultDrinksList]; // รีเซ็ต drinks กลับเป็นค่าเริ่มต้น
 
-  updateTable();
-  updateSummary();
-  updateChart();
-  closeDrinkConfig();
-}
+        testerName.value = ""; // ล้างชื่อผู้ทดสอบใน input
+        populateDrinkDropdowns(); // อัปเดต dropdowns
+        updateAllDisplays(); // อัปเดตตารางและกราฟทั้งหมด
 
+        alert("ข้อมูลทั้งหมดถูกรีเซ็ตแล้ว");
+      }
+    }
+    // --- END: เพิ่มฟังก์ชัน resetStoredData ---
 
+    // --- START: สร้างฟังก์ชัน updateAllDisplays เพื่อลดโค้ดซ้ำซ้อน ---
+    function updateAllDisplays() {
+        updateTable();
+        updateSummary();
+        updateRankSummary();
+        updateChart();
+    }
+    // --- END: สร้างฟังก์ชัน updateAllDisplays ---
 
+    // เรียกฟังก์ชันอัปเดตต่างๆ เพื่อแสดงข้อมูลที่โหลดมาตอนเริ่ม
+    updateAllDisplays();
 
-
-    
   </script>
 
-
   <div id="configModal" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:#fff; border:1px solid #ccc; padding:20px; z-index:1000; max-width:90%; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
-  <h3>ตั้งชื่อเครื่องดื่ม</h3>
-  <div id="drinkInputs"></div>
-  <button onclick="saveDrinkConfig()">บันทึก</button>
-  <button onclick="closeDrinkConfig()">ยกเลิก</button>
-</div>
-<div id="modalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.2); z-index:999;" onclick="closeDrinkConfig()"></div>
+    <h3>ตั้งชื่อเครื่องดื่ม</h3>
+    <div id="drinkInputs"></div>
+    <button onclick="saveDrinkConfig()">บันทึก</button>
+    <button onclick="closeDrinkConfig()">ยกเลิก</button>
+  </div>
+  <div id="modalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.2); z-index:999;" onclick="closeDrinkConfig()"></div>
 
 </body>
 </html>
