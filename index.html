@@ -63,7 +63,7 @@
   
   <div>
   <label>ชื่อการทดสอบ:</label><br>
-  	<input id="testNameInput" placeholder="กรอกชื่อการทดสอบ..." /><br>
+  	<input id="testNameInput" type="text" placeholder="กรอกชื่อการทดสอบ..." /><br>
   
     <label>ชื่อผู้ทดสอบ:</label><br>
     <input type="text" id="testerName" placeholder="เช่น a"><br>
@@ -136,11 +136,6 @@
   <div id="chartContainer" style="height: 200px; width: 100%; margin-top: 30px; position: relative;">
   <canvas id="resultsChart"></canvas>
 </div>
-
-
-<canvas id="resultsChart" height="150"></canvas>
-
-
 
 
 
@@ -424,18 +419,16 @@
  
  
  
- 
- 
  function sendToGoogleSheet() {
-  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby1ea8xgn5gmVOYuNmoJWZuPrYIlEFasCJ4R8K-HBMrkdoYwOTMNe3pvq_xBxYcNfsKwg/exec';
+  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtocb-s6k-juWgzUzV93izdZAFoOnGjqjc0KTGgpICnhubcaW4RwI4jEBqKjaMB80D2A/exec'; // URL ของคุณ
 
-  const testName = document.getElementById("testNameInput").value.trim();
+  const testNameValue = document.getElementById("testNameInput").value.trim(); // เปลี่ยนชื่อตัวแ แปรเล็กน้อยเพื่อความชัดเจน
 
+  // alert("ข้อมูล votes ก่อนส่ง: " + JSON.stringify(votes)); // Debugging: แสดงข้อมูล votes ก่อนส่ง
 
-alert(JSON.stringify(votes));
-
-  if (!testName) {
+  if (!testNameValue) { // ใช้ testNameValue ที่ trim แล้ว
     alert("กรุณากรอกชื่อการทดสอบก่อนส่งข้อมูลไปยัง Google Sheet");
+    document.getElementById("testNameInput").focus(); // ให้ focus ไปที่ input
     return;
   }
 
@@ -444,29 +437,57 @@ alert(JSON.stringify(votes));
     return;
   }
 
+  // --- START: แก้ไข payload ให้ตรงกับที่ Apps Script คาดหวัง ---
   const payload = {
-    testName: testName,
-    votes: votes
+    testName: testNameValue,
+    drinksConfig: [...drinks], // เพิ่ม config เครื่องดื่มปัจจุบัน
+    votesData: [...votes]      // เปลี่ยน key จาก 'votes' เป็น 'votesData'
   };
+  // --- END: แก้ไข payload ---
 
-  // ตรวจสอบก่อนส่ง
-  console.log("Payload to send:", payload);
-  
+  console.log("Payload to send to Google Sheet:", JSON.stringify(payload)); // Debugging: แสดง payload ทั้งหมด
+
+  const sendButton = document.querySelector('.button-container button[onclick="sendToGoogleSheet()"]'); // หาปุ่ม Save to Sheet
+  if(sendButton) {
+      sendButton.disabled = true;
+      sendButton.textContent = 'กำลังส่ง...';
+  }
 
   fetch(GOOGLE_SCRIPT_URL, {
     method: "POST",
+    mode: "cors", // สำคัญสำหรับการเรียกข้ามโดเมน (ควรมีไว้)
     body: JSON.stringify(payload),
     headers: {
       "Content-Type": "application/json"
     }
   })
-  .then(res => res.text())
-  .then(response => {
-    alert("✅ ส่งข้อมูลสำเร็จ: " + response);
+  .then(res => {
+    // ตรวจสอบว่า response เป็น JSON หรือไม่ ก่อนจะพยายาม parse
+    // Apps Script ที่ถูกต้องควรคืน JSON เสมอ
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+      return res.json(); // ถ้าเป็น JSON ให้ parse เป็น object
+    } else {
+      return res.text().then(text => { throw new Error("Response was not JSON: " + text); }); // ถ้าไม่ใช่ JSON แสดงเป็น error
+    }
+  })
+  .then(responseJson => {
+    // console.log("Response from Google Sheet:", responseJson); // Debugging
+    if (responseJson.status === "success") {
+      alert("✅ ส่งข้อมูลสำเร็จ: " + (responseJson.message || `Test: ${responseJson.testName} processed.`));
+    } else {
+      alert("⚠️ เกิดปัญหาในการบันทึกข้อมูลที่ Sheet: " + (responseJson.message || "ไม่ทราบสาเหตุจาก Apps Script"));
+    }
   })
   .catch(err => {
     console.error("❌ Error sending to Google Sheet:", err);
-    alert("❌ เกิดข้อผิดพลาดในการส่งข้อมูล");
+    alert("❌ เกิดข้อผิดพลาดในการส่งข้อมูล: " + err.message);
+  })
+  .finally(() => {
+      if(sendButton) {
+          sendButton.disabled = false;
+          sendButton.textContent = '💾 Save to Sheet....';
+      }
   });
 }
 
