@@ -51,7 +51,25 @@
   </style>
 </head>
 <body>
-  <h1>Blind Test เครื่องดื่ม <span>Cr. NaiGolf</span></h1>
+
+
+
+
+  
+
+<form id="hiddenForm" action="https://docs.google.com/forms/d/e/1FAIpQLSeG8voQqTcX8tnHEP1WPiqGS9ClGSLn5amg7jmIGSqL7gKMJw/formResponse" method="POST" target="hidden_iframe" style="display: none;">
+    <input type="hidden" name="entry.106976809" id="payloadField">
+    <button type="submit">Submit</button>
+  </form>
+
+<iframe name="hidden_iframe" style="display:none;"></iframe>
+
+
+
+
+  
+  
+  <h1>Blind Test เครื่องดื่ม+<span>Cr. NaiGolf</span></h1>
 
 <div class="button-container">
   <button onclick="sendToGoogleSheet()" style="background-color: #ccffcc; margin-right: 5px;">💾 Save to Sheet....</button> 
@@ -420,9 +438,8 @@
  
  
  function sendToGoogleSheet() {
-  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtocb-s6k-juWgzUzV93izdZAFoOnGjqjc0KTGgpICnhubcaW4RwI4jEBqKjaMB80D2A/exec'; // URL ของคุณ
 
-  const testNameValue = document.getElementById("testNameInput").value.trim(); // เปลี่ยนชื่อตัวแ แปรเล็กน้อยเพื่อความชัดเจน
+  const testNameValue = document.getElementById("testNameInput").value.trim(); // เปลี่ยนชื่อตัวแปรเล็กน้อยเพื่อความชัดเจน
 
   // alert("ข้อมูล votes ก่อนส่ง: " + JSON.stringify(votes)); // Debugging: แสดงข้อมูล votes ก่อนส่ง
 
@@ -453,42 +470,19 @@
       sendButton.textContent = 'กำลังส่ง...';
   }
 
-  fetch(GOOGLE_SCRIPT_URL, {
-    method: "POST",
-    mode: "cors", // สำคัญสำหรับการเรียกข้ามโดเมน (ควรมีไว้)
-    body: JSON.stringify(payload),
-    headers: {
-      "Content-Type": "application/json"
-    }
-  })
-  .then(res => {
-    // ตรวจสอบว่า response เป็น JSON หรือไม่ ก่อนจะพยายาม parse
-    // Apps Script ที่ถูกต้องควรคืน JSON เสมอ
-    const contentType = res.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") !== -1) {
-      return res.json(); // ถ้าเป็น JSON ให้ parse เป็น object
-    } else {
-      return res.text().then(text => { throw new Error("Response was not JSON: " + text); }); // ถ้าไม่ใช่ JSON แสดงเป็น error
-    }
-  })
-  .then(responseJson => {
-    // console.log("Response from Google Sheet:", responseJson); // Debugging
-    if (responseJson.status === "success") {
-      alert("✅ ส่งข้อมูลสำเร็จ: " + (responseJson.message || `Test: ${responseJson.testName} processed.`));
-    } else {
-      alert("⚠️ เกิดปัญหาในการบันทึกข้อมูลที่ Sheet: " + (responseJson.message || "ไม่ทราบสาเหตุจาก Apps Script"));
-    }
-  })
-  .catch(err => {
-    console.error("❌ Error sending to Google Sheet:", err);
-    alert("❌ เกิดข้อผิดพลาดในการส่งข้อมูล: " + err.message);
-  })
-  .finally(() => {
-      if(sendButton) {
-          sendButton.disabled = false;
-          sendButton.textContent = '💾 Save to Sheet....';
-      }
-  });
+
+      const jsonString = JSON.stringify(payload);
+      console.log("ส่ง JSON ไป Google Forms:", jsonString);
+
+      // ใส่ JSON ลงในช่อง entry
+      document.getElementById("payloadField").value = jsonString;
+
+      // ส่งฟอร์มซ่อน
+      document.getElementById("hiddenForm").submit();
+
+
+   
+  
 }
 
     
