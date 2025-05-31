@@ -465,10 +465,6 @@
   console.log("Payload to send to Google Sheet:", JSON.stringify(payload)); // Debugging: แสดง payload ทั้งหมด
 
   const sendButton = document.querySelector('.button-container button[onclick="sendToGoogleSheet()"]'); // หาปุ่ม Save to Sheet
-  if(sendButton) {
-      sendButton.disabled = true;
-      sendButton.textContent = 'กำลังส่ง...';
-  }
 
 
       const jsonString = JSON.stringify(payload);
@@ -481,7 +477,19 @@
       document.getElementById("hiddenForm").submit();
 
 
-   
+         if (confirm("ส่งข้อมูลไปเก็บไว้เรียบร้อยแล้ว\nต้องการรีเซ็ตข้อมูลการโหวตหรือไม่? ")) {
+        localStorage.removeItem('blindTestVotes');
+        localStorage.removeItem('blindTestDrinks');
+
+        votes = [];
+        drinks = [...defaultDrinksList]; // รีเซ็ต drinks กลับเป็นค่าเริ่มต้น
+
+        testerName.value = ""; // ล้างชื่อผู้ทดสอบใน input
+        populateDrinkDropdowns(); // อัปเดต dropdowns
+        updateAllDisplays(); // อัปเดตตารางและกราฟทั้งหมด
+
+        alert("ข้อมูลทั้งหมดถูกรีเซ็ตแล้ว");
+      }
   
 }
 
